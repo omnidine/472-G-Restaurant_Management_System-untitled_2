@@ -44,8 +44,12 @@ class ReservationControllerTest extends TestCase
         parent::tearDown();
     }
 
+    // -------------------------------------------------------------------------
+    // Reservation Creation Tests (Acceptance Criteria 1)
+    // -------------------------------------------------------------------------
+
     /**
-     * Test creating a new reservation
+     * Test creating a new reservation successfully
      * Acceptance Criteria 1
      */
     public function testStore()
@@ -95,6 +99,44 @@ class ReservationControllerTest extends TestCase
         $this->assertEquals($expectedReservation, $response->resource);
         $this->assertEquals('PENDING', $expectedReservation->status);
     }
+
+    /**
+     * Test unauthorized user cannot create reservation
+     * Additional Acceptance Criteria
+     */
+    public function testUnauthorizedUserCannotCreateReservation()
+    {
+        // Arrange
+        $userId = 1;
+        $tableId = 1;
+        $appointmentTime = '2025-04-01 19:00:00';
+
+        $requestData = [
+            'user_id' => $userId,
+            'table_id' => $tableId,
+            'appointment_time' => $appointmentTime,
+        ];
+
+        $request = new Request($requestData);
+
+        // Mock authorization to throw exception
+        $exception = new \Illuminate\Auth\Access\AuthorizationException('This action is unauthorized.');
+        Gate::shouldReceive('authorize')
+            ->once()
+            ->with('create', Reservation::class)
+            ->andThrow($exception);
+
+        // Expect exception
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectExceptionMessage('This action is unauthorized.');
+
+        // Act
+        $this->reservationController->store($request);
+    }
+
+    // -------------------------------------------------------------------------
+    // Reservation Viewing Tests (Acceptance Criteria 2)
+    // -------------------------------------------------------------------------
 
     /**
      * Test getting all reservations
@@ -223,6 +265,10 @@ class ReservationControllerTest extends TestCase
         $this->assertEquals(['message' => 'User not found'], json_decode($response->getContent(), true));
     }
 
+    // -------------------------------------------------------------------------
+    // Reservation Update Tests (Acceptance Criteria 3)
+    // -------------------------------------------------------------------------
+
     /**
      * Test updating a reservation status
      * Acceptance Criteria 3
@@ -269,5 +315,68 @@ class ReservationControllerTest extends TestCase
         // Assert
         $this->assertInstanceOf(ReservationResource::class, $response);
         $this->assertEquals($updatedReservation, $response->resource);
+    }
+
+    /**
+     * Test unauthorized user cannot update reservation
+     * Additional Acceptance Criteria
+     */
+    public function testUnauthorizedUserCannotUpdateReservation()
+    {
+        // Arrange
+        $reservationId = 1;
+        $newStatus = 'CONFIRMED';
+
+        $reservation = Mockery::mock(Reservation::class);
+        $reservation->shouldReceive('getAttribute')->with('id')->andReturn($reservationId);
+
+        $request = new Request(['status' => $newStatus]);
+
+        // Mock authorization to throw exception
+        $exception = new \Illuminate\Auth\Access\AuthorizationException('This action is unauthorized.');
+        Gate::shouldReceive('authorize')
+            ->once()
+            ->with('update', $reservation)
+            ->andThrow($exception);
+
+        // Expect exception
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectExceptionMessage('This action is unauthorized.');
+
+        // Act
+        $this->reservationController->update($request, $reservation);
+    }
+
+    /**
+     * Test non-owner cannot update reservation
+     * Additional Acceptance Criteria
+     */
+    public function testNonOwnerCannotUpdateReservation()
+    {
+        // Arrange
+        $reservationId = 1;
+        $newStatus = 'CONFIRMED';
+        $nonOwnerUserId = 999; // Different from the reservation owner
+
+        // Create a reservation owned by user 1
+        $reservation = Mockery::mock(Reservation::class);
+        $reservation->shouldReceive('getAttribute')->with('id')->andReturn($reservationId);
+        $reservation->shouldReceive('getAttribute')->with('user_id')->andReturn(1);
+
+        $request = new Request(['status' => $newStatus]);
+
+        // Mock authorization to throw exception for non-owner
+        $exception = new \Illuminate\Auth\Access\AuthorizationException('You do not own this reservation.');
+        Gate::shouldReceive('authorize')
+            ->once()
+            ->with('update', $reservation)
+            ->andThrow($exception);
+
+        // Expect exception
+        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectExceptionMessage('You do not own this reservation.');
+
+        // Act
+        $this->reservationController->update($request, $reservation);
     }
 }
