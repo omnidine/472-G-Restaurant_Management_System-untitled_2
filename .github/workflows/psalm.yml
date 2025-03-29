@@ -42,7 +42,7 @@ jobs:
           # Whether or not to show non-exception parser findings
           show_info: true # optional, default is false
           # File for Psalm’s output
-          report_file: true # optional, default is 
+          report_file: psalm-results.sarif # optional, default is 
           # Whether or not Composer installs dev packages
           composer_require_dev: true # optional, default is false
           # Whether or not the --ignore-platform-reqs flag is passed to Composer
