@@ -1,0 +1,54 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Psalm Security Scan
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "main" ]
+  schedule:
+    - cron: '37 11 * * 3'
+
+permissions:
+  contents: read
+
+jobs:
+  php-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # for actions/checkout to fetch code
+      security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
+      actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Psalm Security Scan
+        uses: psalm/psalm-github-security-scan@f3e6fd9432bc3e44aec078572677ce9d2ef9c287
+
+      - name: Psalm – Static Analysis for PHP
+        # You may pin to the exact commit or the version.
+        # uses: psalm/psalm-github-actions@5c33a1b1a761341655ee4c7581fbf629db969d4e
+        uses: psalm/psalm-github-actions@2.3.0
+        with:
+          # Whether or not to use Psalm’s security analysis
+          security_analysis: true # optional, default is false
+          # Whether or not to show non-exception parser findings
+          show_info: true # optional, default is false
+          # File for Psalm’s output
+          report_file: true # optional, default is 
+          # Whether or not Composer installs dev packages
+          composer_require_dev: true # optional, default is false
+          # Whether or not the --ignore-platform-reqs flag is passed to Composer
+          composer_ignore_platform_reqs: true # optional, default is false
+                
+      - name: Upload Security Analysis results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
